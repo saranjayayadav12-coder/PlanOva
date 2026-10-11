@@ -18,7 +18,8 @@
 | **Phase 7** | AI Study Planner | Completed | Deterministic schedule generation, daily study limit, availability preferences, local persistence |
 | **Phase 8** | Adaptive Scheduling & Intelligent Plan Adjustment | Completed | Session outcome tracking, adaptive replanning triggers, side-by-side comparison modal, What-If simulator, adaptation history log |
 | **Phase 9** | Workload Insights & Academic Recovery Mode | Completed | Workload analytics, deadline pressure points, daily capacity distribution, deterministic recovery engine, before/after proposal review |
-| **Phase 10** | Integrated Academic Calendar & Time Blocks | Upcoming | Day/Week/Month calendar views, drag-and-drop time blocking, external calendar export |
+| **Phase 10** | Interactive Academic Calendar | Completed | Month, Week, Day calendar views, Task deadlines & Study block integration, Academic scheduling warnings, Shared state |
+| **Phase 11** | Optional Well-being Check-ins & Student Support Insights | Completed | Daily check-in form, Self-reported signals, Supportive workload synthesis, Privacy & local storage controls |
 
 ---
 
@@ -82,3 +83,29 @@
 - **Deterministic Recovery Scheduler**: Generates an Academic Recovery proposal that re-balances study blocks evenly across available days within configured caps while protecting completed milestones.
 - **Original vs Proposed Plan Comparison**: Side-by-side comparative metrics (Study hours before/after, Overloaded days before/after, Moved sessions, Unscheduled work, Well-being trade-offs).
 - **Student Approval Control**: Requires explicit student confirmation (**Accept Recovery Plan**, **Reject Proposal**, or **Cancel & Return**). Updating writes to `acadesk.planner_plans.v1` and appends an event to `acadesk.planner_history.v1`.
+
+---
+
+## Phase 10: Interactive Academic Calendar (Detailed Breakdown)
+
+### 1. Interactive Academic Calendar (`/app/calendar`)
+- **Multi-View Engine**: Full support for Month View (7-column grid with proper leap-year and weekday alignment), Week View (with separate all-day deadlines and timed study blocks), and Day View (focused daily schedule with stat gauges).
+- **Zero Duplicate Store Integration**: Synthesizes calendar events dynamically from shared `TaskProvider` and accepted `acadesk.planner_plan.v1` sessions. Tasks without deadlines never receive fabricated calendar dates.
+- **Quick Task Creation with Prepopulated Deadlines**: Allows creating deliverables directly from any selected calendar date with immediate updates across Calendar, Tasks, Workload Insights, and Dashboard.
+- **Task & Deadline Editing**: Seamlessly updates task deadlines and status from the calendar with full persistence and reactive synchronization across all views.
+- **Academic Scheduling Warnings**: Deterministic diagnostics for deadline clustering (multiple assignments due on the same day), overloaded days (planned minutes exceeding daily cap), planning gaps (approaching deliverables without study sessions), and schedule conflicts (overlapping study blocks).
+- **Event Detail Inspector**: Modal inspection of task descriptions, subtask breakdown progress, priority levels, study session times, and reflections with direct completion toggles.
+
+---
+
+## Phase 11: Optional Well-being Check-ins & Student Support Insights (Detailed Breakdown)
+
+### 1. Student Well-being Center (`/app/wellbeing`)
+- **Daily Check-in Form**: Accessible 4-metric evaluation (Stress, Energy, Sleep quality, and Workload Manageability on 1–5 scales) plus an optional personal reflection note.
+- **Duplicate Prevention Policy**: Enforces one check-in per calendar day, permitting students to review and update responses at any time without data duplication.
+- **Supportive Insights Engine**: Transparent, deterministic rules generating empathetic guidance for high stress, low energy, poor sleep, or unmanageable workloads.
+- **Workload Integration & Synthesis**: Reconciles self-reported signals with actual academic commitments (e.g. flagging days where low energy collides with overloaded planned study blocks, or high stress coincides with upcoming deadline clusters).
+- **Student Privacy & Data Governance**: 100% browser-local storage (`acadesk.wellbeing_checkins.v1`), zero external network transmission, and zero LLM API calls.
+- **Comprehensive Control**: Students can delete individual check-ins or clear their entire history with explicit confirmation.
+
+

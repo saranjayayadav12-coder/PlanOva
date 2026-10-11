@@ -29,6 +29,7 @@ import {
   DEFAULT_ANCHOR_DATE,
   analyzeDailyWorkloadDistribution,
 } from "./workload-service";
+import { normalizeStudyPlan } from "./planner-storage";
 
 /**
  * Diagnoses whether academic recovery is needed and compiles contributing triggers
@@ -198,11 +199,56 @@ export function generateRecoveryProposal({
     ? acceptedPlan.sessions.filter((s) => s.status === "completed")
     : [];
 
+  // Extract completed subtask IDs and completed minutes to avoid duplicating completed work
+  const completedSubtaskIds = new Set(
+    preservedCompletedSessions
+      .map((s) => s.subtaskId)
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const completedMinutesByTask: Record<string, number> = {};
+  for (const cs of preservedCompletedSessions) {
+    completedMinutesByTask[cs.taskId] = (completedMinutesByTask[cs.taskId] || 0) + cs.durationMinutes;
+  }
+
+  // Filter breakdowns so already completed subtasks are marked completed and not re-scheduled
+  const recoveryBreakdowns: Record<string, TaskBreakdown> = {};
+  for (const [taskId, bd] of Object.entries(breakdowns)) {
+    recoveryBreakdowns[taskId] = {
+      ...bd,
+      subtasks: bd.subtasks.map((st) =>
+        completedSubtaskIds.has(st.id) ? { ...st, status: "completed" as const } : st
+      ),
+    };
+  }
+
+  // Filter tasks to only schedule remaining duration
+  const recoveryTasks = tasks
+    .filter((t) => t.status !== "completed")
+    .map((task) => {
+      const bd = recoveryBreakdowns[task.id];
+      if (bd && bd.subtasks.length > 0) {
+        return task;
+      }
+      const alreadyCompleted = completedMinutesByTask[task.id] || 0;
+      const remainingMinutes = Math.max(0, task.estimatedDurationMinutes - alreadyCompleted);
+      return {
+        ...task,
+        estimatedDurationMinutes: remainingMinutes,
+      };
+    })
+    .filter((task) => {
+      const bd = recoveryBreakdowns[task.id];
+      if (bd && bd.subtasks.length > 0) {
+        return bd.subtasks.some((st) => st.status !== "completed");
+      }
+      return task.estimatedDurationMinutes > 0;
+    });
+
   // 2. Run the deterministic scheduler for the upcoming 7 days with adjusted pacing
-  // We prioritize active tasks, give overdue tasks immediate slots, and spread work evenly
   const recoveryRawPlan = generateStudyPlan({
-    tasks: tasks.filter((t) => t.status !== "completed"),
-    breakdowns,
+    tasks: recoveryTasks,
+    breakdowns: recoveryBreakdowns,
     availability,
     startDateStr: todayStr,
     endDateStr: endDateStr,
@@ -210,6 +256,7 @@ export function generateRecoveryProposal({
 
   // 3. Mark sessions with diff tags for clear explainability
   const recoveredSessions: PlannedSession[] = [];
+  const usedSessionIds = new Set<string>();
   const existingSessionMap = new Map<string, PlannedSession>();
   if (acceptedPlan) {
     for (const s of acceptedPlan.sessions) {
@@ -223,21 +270,43 @@ export function generateRecoveryProposal({
       ...comp,
       diffTag: "unchanged",
     });
+    usedSessionIds.add(comp.id);
   }
 
   let movedCount = 0;
   for (const s of recoveryRawPlan.sessions) {
+    // If this session is for an already preserved completed subtask, skip it
+    if (s.subtaskId && completedSubtaskIds.has(s.subtaskId)) {
+      continue;
+    }
+
     const prev = existingSessionMap.get(`${s.taskId}-${s.subtaskId || "m"}`);
+    let diffTag: "unchanged" | "moved" | "added" = "added";
     if (prev) {
       if (prev.date === s.date && prev.startTime === s.startTime) {
-        recoveredSessions.push({ ...s, diffTag: "unchanged" });
+        diffTag = "unchanged";
       } else {
         movedCount++;
-        recoveredSessions.push({ ...s, diffTag: "moved" });
+        diffTag = "moved";
       }
-    } else {
-      recoveredSessions.push({ ...s, diffTag: "added" });
     }
+
+    // Ensure session ID is strictly unique and does not collide with preserved sessions
+    let uniqueId = s.id;
+    if (usedSessionIds.has(uniqueId)) {
+      let counter = 1;
+      while (usedSessionIds.has(`${s.id}-rec-${counter}`)) {
+        counter++;
+      }
+      uniqueId = `${s.id}-rec-${counter}`;
+    }
+    usedSessionIds.add(uniqueId);
+
+    recoveredSessions.push({
+      ...s,
+      id: uniqueId,
+      diffTag,
+    });
   }
 
   // Sort sessions chronologically
@@ -303,7 +372,7 @@ export function generateRecoveryProposal({
     remainingRisks,
   };
 
-  const finalPlan: StudyPlan = {
+  const finalPlan: StudyPlan = normalizeStudyPlan({
     ...recoveryRawPlan,
     id: `plan-recovery-${Date.now()}`,
     status: "draft",
@@ -311,7 +380,7 @@ export function generateRecoveryProposal({
     totalPlannedMinutes: proposedPlannedMinutes,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  })!;
 
   return {
     plan: finalPlan,

@@ -18,6 +18,7 @@
 import {
   AvailabilityPreferences,
   StudyPlan,
+  PlannedSession,
   AdaptationHistoryEvent,
 } from "@/types/planner";
 
@@ -167,6 +168,76 @@ export function saveAvailabilityToStorage(avail: AvailabilityPreferences): boole
 }
 
 /**
+ * Normalizes a StudyPlan by ensuring:
+ * 1. Every distinct session has a unique, stable ID.
+ * 2. Exact identical duplicates (same session mistakenly inserted twice) are deduplicated.
+ * 3. Legitimate distinct sessions with collided IDs are disambiguated with stable, unique IDs.
+ * 4. Preserves legitimate sessions, completion states, and plan metadata.
+ */
+export function normalizeStudyPlan(plan: StudyPlan | null): StudyPlan | null {
+  if (!plan || !Array.isArray(plan.sessions)) {
+    return plan;
+  }
+
+  const seenSessionSignatures = new Set<string>();
+  const seenIds = new Set<string>();
+  const normalizedSessions: PlannedSession[] = [];
+  let modified = false;
+
+  for (let i = 0; i < plan.sessions.length; i++) {
+    const session = plan.sessions[i];
+    if (!session || typeof session !== "object") continue;
+
+    // Signature to identify exact identical duplicates (same session inserted twice)
+    const signature = `${session.id}__${session.taskId}__${session.subtaskId || ""}__${session.date}__${session.startTime}__${session.endTime}__${session.status}__${session.title}__${session.durationMinutes}`;
+
+    if (seenSessionSignatures.has(signature)) {
+      // Exact identical clone already present; safely skip duplicate insertion
+      modified = true;
+      continue;
+    }
+    seenSessionSignatures.add(signature);
+
+    let finalId = session.id;
+    if (seenIds.has(finalId)) {
+      modified = true;
+      // Legitimate distinct session that received a colliding ID; disambiguate safely
+      let counter = 1;
+      let candidateId = `${session.id}-s${session.orderIndex || i + 1}`;
+      while (seenIds.has(candidateId)) {
+        candidateId = `${session.id}-dup${counter++}`;
+      }
+      finalId = candidateId;
+    }
+
+    seenIds.add(finalId);
+    if (finalId !== session.id) {
+      normalizedSessions.push({
+        ...session,
+        id: finalId,
+      });
+    } else {
+      normalizedSessions.push(session);
+    }
+  }
+
+  if (!modified && normalizedSessions.length === plan.sessions.length) {
+    return plan;
+  }
+
+  const totalPlannedMinutes = normalizedSessions.reduce(
+    (acc, s) => acc + (s.durationMinutes || 0),
+    0
+  );
+
+  return {
+    ...plan,
+    sessions: normalizedSessions,
+    totalPlannedMinutes,
+  };
+}
+
+/**
  * Load study plans (accepted and draft) from localStorage.
  */
 export function loadPlansFromStorage(): StoredPlans {
@@ -183,9 +254,23 @@ export function loadPlansFromStorage(): StoredPlans {
       return DEFAULT_STORED_PLANS;
     }
 
+    const rawAccepted = parsed.acceptedPlan && Array.isArray(parsed.acceptedPlan.sessions) ? parsed.acceptedPlan : null;
+    const rawDraft = parsed.draftPlan && Array.isArray(parsed.draftPlan.sessions) ? parsed.draftPlan : null;
+
+    const acceptedPlan = normalizeStudyPlan(rawAccepted);
+    const draftPlan = normalizeStudyPlan(rawDraft);
+
+    // If normalization migrated legacy data with duplicate IDs, update localStorage safely
+    if (
+      (acceptedPlan && acceptedPlan !== rawAccepted) ||
+      (draftPlan && draftPlan !== rawDraft)
+    ) {
+      savePlansToStorage({ acceptedPlan, draftPlan });
+    }
+
     return {
-      acceptedPlan: parsed.acceptedPlan && Array.isArray(parsed.acceptedPlan.sessions) ? parsed.acceptedPlan : null,
-      draftPlan: parsed.draftPlan && Array.isArray(parsed.draftPlan.sessions) ? parsed.draftPlan : null,
+      acceptedPlan,
+      draftPlan,
     };
   } catch (err) {
     console.warn("Acadesk: Failed to load plans from storage, resetting to empty state.", err);
@@ -200,7 +285,11 @@ export function savePlansToStorage(plans: StoredPlans): boolean {
   if (typeof window === "undefined") return false;
 
   try {
-    const serialized = JSON.stringify(plans);
+    const normalizedPlans: StoredPlans = {
+      acceptedPlan: normalizeStudyPlan(plans.acceptedPlan),
+      draftPlan: normalizeStudyPlan(plans.draftPlan),
+    };
+    const serialized = JSON.stringify(normalizedPlans);
     window.localStorage.setItem(PLAN_STORAGE_KEY, serialized);
     return true;
   } catch (err) {

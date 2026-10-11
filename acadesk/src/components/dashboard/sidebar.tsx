@@ -51,9 +51,8 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "calendar",
     label: "Calendar",
-    href: "#",
+    href: "/app/calendar",
     icon: Calendar,
-    upcoming: true,
   },
   {
     id: "insights",
@@ -69,17 +68,15 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "wellbeing",
-    label: "Well-being Check-in",
-    href: "#",
+    label: "Well-being",
+    href: "/app/wellbeing",
     icon: Heart,
-    upcoming: true,
   },
   {
     id: "settings",
     label: "Settings",
-    href: "#",
+    href: "/app/settings",
     icon: Settings,
-    upcoming: true,
   },
 ];
 

@@ -42,6 +42,11 @@ interface TaskContextType {
   deleteBreakdown: (taskId: string) => void;
   toggleSubtaskCompletion: (taskId: string, subtaskId: string) => void;
   updateSubtasks: (taskId: string, subtasks: Subtask[]) => void;
+  importTasksAndBreakdowns: (
+    importedTasks: Task[],
+    importedBreakdowns: Record<string, TaskBreakdown>
+  ) => void;
+  clearAllTasksAndBreakdowns: () => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -194,6 +199,23 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     saveBreakdownsToStorage(DEFAULT_BREAKDOWNS);
   }, []);
 
+  const importTasksAndBreakdowns = useCallback(
+    (importedTasks: Task[], importedBreakdowns: Record<string, TaskBreakdown>) => {
+      setTasks(importedTasks);
+      saveTasksToStorage(importedTasks);
+      setBreakdowns(importedBreakdowns);
+      saveBreakdownsToStorage(importedBreakdowns);
+    },
+    []
+  );
+
+  const clearAllTasksAndBreakdowns = useCallback(() => {
+    setTasks([]);
+    saveTasksToStorage([]);
+    setBreakdowns({});
+    saveBreakdownsToStorage({});
+  }, []);
+
   // --- Subtask & Breakdown Methods ---
 
   const getBreakdown = useCallback(
@@ -301,6 +323,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       deleteBreakdown,
       toggleSubtaskCompletion,
       updateSubtasks,
+      importTasksAndBreakdowns,
+      clearAllTasksAndBreakdowns,
     }),
     [
       tasks,
@@ -317,6 +341,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       deleteBreakdown,
       toggleSubtaskCompletion,
       updateSubtasks,
+      importTasksAndBreakdowns,
+      clearAllTasksAndBreakdowns,
     ]
   );
 

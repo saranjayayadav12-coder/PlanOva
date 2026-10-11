@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, Clock, CheckCircle2, ArrowRight, X } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Clock, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from "@/components/ui";
 import { DemoScheduleBlock, ScheduleStatus } from "./types";
 
@@ -21,8 +21,6 @@ function getStatusBadge(status: ScheduleStatus) {
 }
 
 export function StudyPlanPreview({ schedule }: StudyPlanPreviewProps) {
-  const [showPlannerInfo, setShowPlannerInfo] = useState(false);
-
   return (
     <>
       <Card className="flex flex-col h-full">
@@ -79,91 +77,25 @@ export function StudyPlanPreview({ schedule }: StudyPlanPreviewProps) {
             ))}
           </div>
 
-          {/* Action button with explicit upcoming feature feedback */}
+          {/* Action button leading directly to active Study Planner */}
           <div className="pt-3 border-t border-[var(--color-border)]">
-            <Button
-              variant="primary"
-              size="md"
-              className="w-full justify-center gap-2"
-              onClick={() => setShowPlannerInfo(true)}
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>Explore Study Planner</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <Link href="/app/planner" className="block w-full">
+              <Button
+                variant="primary"
+                size="md"
+                className="w-full justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Open Study Planner</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
             <p className="text-[11px] text-center text-[var(--color-text-muted)] mt-1.5">
-              Automated AI planner engine preview
+              Automated adaptive study schedule engine
             </p>
           </div>
         </CardContent>
       </Card>
-
-      {/* Accessible Feature Announcement Modal */}
-      {showPlannerInfo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-title"
-        >
-          <div
-            className="w-full max-w-md rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-lg)]"
-                  style={{ backgroundColor: "var(--color-accent-lavender)" }}
-                >
-                  <Sparkles className="h-5 w-5 text-[var(--color-primary)]" />
-                </div>
-                <div>
-                  <h3 id="modal-title" className="text-base font-bold text-[var(--color-text)]">
-                    AI Study Planner
-                  </h3>
-                  <Badge variant="primary" size="sm" className="mt-0.5">
-                    Coming in Phase 5
-                  </Badge>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPlannerInfo(false)}
-                className="rounded-[var(--radius-md)] p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                aria-label="Close dialog"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <p className="mt-4 text-xs sm:text-sm leading-relaxed text-[var(--color-text-muted)]">
-              The automated study planning engine will arrive in <strong>Phase 5</strong>.
-              It will intelligently generate custom time blocks based on your syllabus,
-              estimate task complexity, and dynamically recalibrate when tasks take longer than anticipated.
-            </p>
-
-            <div className="mt-4 p-3 rounded-[var(--radius-md)] bg-[var(--color-background)] border border-[var(--color-border)] text-xs text-[var(--color-text)]">
-              <div className="flex items-center gap-2 font-semibold text-[var(--color-primary-dark)] mb-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--color-success)]" />
-                Current Phase 4 Functionality:
-              </div>
-              <span>
-                You can interactively check off tasks in <em>Today&apos;s Priorities</em> right now to watch your remaining workload recalculate in real time!
-              </span>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setShowPlannerInfo(false)}
-              >
-                Got it, continue preview
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

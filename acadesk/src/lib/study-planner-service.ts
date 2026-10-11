@@ -134,6 +134,7 @@ export function generateStudyPlan({
   const explanations: PlanExplanation[] = [];
   const unscheduledTasks: UnscheduledTask[] = [];
   const sessions: PlannedSession[] = [];
+  const usedSessionIds = new Set<string>();
 
   // Step 1: Collect candidates (ignoring completed tasks)
   const candidates: ScheduleCandidate[] = [];
@@ -332,8 +333,16 @@ export function generateStudyPlan({
           const sessionStartTime = minutesToTime(currentClockMinutes);
           const sessionEndTime = minutesToTime(currentClockMinutes + item.durationMinutes);
 
+          const baseId = `session-${item.taskId}-${item.subtaskId || "t"}-${orderCounter}`;
+          let sessionId = baseId;
+          let disambiguator = 1;
+          while (usedSessionIds.has(sessionId)) {
+            sessionId = `${baseId}-${disambiguator++}`;
+          }
+          usedSessionIds.add(sessionId);
+
           sessions.push({
-            id: `session-${item.taskId}-${item.subtaskId || "t"}-${orderCounter}`,
+            id: sessionId,
             taskId: item.taskId,
             subtaskId: item.subtaskId,
             title: item.title,
@@ -716,6 +725,7 @@ export function generateAdaptivePlan({
   const end = parseDateISO(currentPlan.endDate);
 
   const revisedSessions: PlannedSession[] = [...completedSessions.map(cs => ({ ...cs, diffTag: "unchanged" as const }))];
+  const usedRevisedSessionIds = new Set<string>(completedSessions.map(cs => cs.id));
   const unscheduledTasks: UnscheduledTask[] = [];
   const warnings: PlanWarning[] = [];
   const explanations: PlanExplanation[] = [];
@@ -781,8 +791,16 @@ export function generateAdaptivePlan({
           const sessionStartTime = minutesToTime(currentClockMinutes);
           const sessionEndTime = minutesToTime(currentClockMinutes + item.durationMinutes);
 
+          const baseId = `session-revised-${item.taskId}-${item.subtaskId || "t"}-${orderCounter}`;
+          let sessionId = baseId;
+          let disambiguator = 1;
+          while (usedRevisedSessionIds.has(sessionId)) {
+            sessionId = `${baseId}-${disambiguator++}`;
+          }
+          usedRevisedSessionIds.add(sessionId);
+
           revisedSessions.push({
-            id: `session-revised-${item.taskId}-${item.subtaskId || "t"}-${orderCounter}`,
+            id: sessionId,
             taskId: item.taskId,
             subtaskId: item.subtaskId,
             title: item.title,

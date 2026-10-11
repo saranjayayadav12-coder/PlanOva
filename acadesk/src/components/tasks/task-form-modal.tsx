@@ -10,6 +10,7 @@ interface TaskFormModalProps {
   onClose: () => void;
   onSubmit: (data: TaskFormData) => void;
   initialTask?: Task | null;
+  defaultDeadline?: string;
 }
 
 const COMMON_SUBJECTS = [
@@ -32,10 +33,12 @@ interface FormErrors {
 
 function TaskFormDialogContent({
   initialTask,
+  defaultDeadline,
   onClose,
   onSubmit,
 }: {
   initialTask?: Task | null;
+  defaultDeadline?: string;
   onClose: () => void;
   onSubmit: (data: TaskFormData) => void;
 }) {
@@ -46,7 +49,9 @@ function TaskFormDialogContent({
   const [title, setTitle] = useState(initialTask ? initialTask.title : "");
   const [description, setDescription] = useState(initialTask?.description || "");
   const [subject, setSubject] = useState(initialTask ? initialTask.subject : "Operating Systems");
-  const [deadline, setDeadline] = useState(initialTask ? initialTask.deadline : "2026-10-13");
+  const [deadline, setDeadline] = useState(
+    initialTask ? initialTask.deadline : (defaultDeadline || "2026-10-13")
+  );
   const [estimatedDurationMinutes, setEstimatedDurationMinutes] = useState<number>(
     initialTask ? initialTask.estimatedDurationMinutes : 45
   );
@@ -367,13 +372,15 @@ export function TaskFormModal({
   onClose,
   onSubmit,
   initialTask,
+  defaultDeadline,
 }: TaskFormModalProps) {
   if (!isOpen) return null;
 
   return (
     <TaskFormDialogContent
-      key={initialTask ? initialTask.id : "new-task-form"}
+      key={initialTask ? initialTask.id : `new-task-form-${defaultDeadline || "default"}`}
       initialTask={initialTask}
+      defaultDeadline={defaultDeadline}
       onClose={onClose}
       onSubmit={onSubmit}
     />
